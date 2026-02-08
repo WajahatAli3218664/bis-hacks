@@ -13,7 +13,9 @@ app = FastAPI(title="AI Todo API")
 handler = Mangum(app)
 
 # Initialize Groq client
-groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+groq_client = None
+if os.getenv("GROQ_API_KEY"):
+    groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 # CORS - Allow all origins for Vercel deployments
 app.add_middleware(
@@ -116,6 +118,12 @@ def chat(request: ChatRequest, response: Response):
     response.headers["Access-Control-Allow-Origin"] = "*"
     response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    
+    if not groq_client:
+        return ChatResponse(
+            response="AI service is not configured. Please check environment variables."
+        )
+    
     try:
         system_prompt = """You are a helpful AI assistant for a todo app. Help users manage their tasks naturally.
 
