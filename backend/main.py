@@ -5,10 +5,12 @@ from typing import List, Optional
 import os
 from groq import Groq
 from dotenv import load_dotenv
+from mangum import Mangum
 
 load_dotenv()
 
 app = FastAPI(title="AI Todo API")
+handler = Mangum(app)
 
 # Initialize Groq client
 groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
