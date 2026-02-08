@@ -199,5 +199,3 @@ Be concise and friendly. Don't show raw task data."""
         return ChatResponse(
             response=f"Sorry, I'm having trouble right now. Error: {str(e)}"
         )
-
-handler = Mangum(app)
