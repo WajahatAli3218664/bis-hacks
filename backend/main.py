@@ -3,21 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 import os
-from groq import Groq
-from dotenv import load_dotenv
 from mangum import Mangum
 
-load_dotenv()
-
 app = FastAPI(title="AI Todo API")
-handler = Mangum(app)
 
-# Initialize Groq client
-groq_client = None
-if os.getenv("GROQ_API_KEY"):
-    groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-
-# CORS - Allow all origins for Vercel deployments
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -27,7 +17,7 @@ app.add_middleware(
     expose_headers=["*"]
 )
 
-# In-memory storage (replace with database later)
+# In-memory storage
 tasks_db = {}
 conversations_db = {}
 
@@ -114,17 +104,14 @@ def chat_options():
 
 @app.post("/chat")
 def chat(request: ChatRequest, response: Response):
-    # Set CORS headers manually
     response.headers["Access-Control-Allow-Origin"] = "*"
     response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     
-    if not groq_client:
-        return ChatResponse(
-            response="AI service is not configured. Please check environment variables."
-        )
-    
     try:
+        from groq import Groq
+        groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+        
         system_prompt = """You are a helpful AI assistant for a todo app. Help users manage their tasks naturally.
 
 When user wants to:
@@ -210,9 +197,7 @@ Be concise and friendly. Don't show raw task data."""
         )
     except Exception as e:
         return ChatResponse(
-            response=f"Sorry, I'm having trouble right now. Please try again."
+            response=f"Sorry, I'm having trouble right now. Error: {str(e)}"
         )
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+handler = Mangum(app)
