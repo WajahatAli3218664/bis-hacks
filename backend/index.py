@@ -86,8 +86,26 @@ Be brief, friendly, and natural. Use emojis occasionally."""},
         task_id = None
         updated_task = None
         
+        # Detect mark as complete intent
+        if any(word in message_lower for word in ["mark", "complete", "done", "finish"]) and "as" in message_lower:
+            for t in request.tasks:
+                title_lower = t.get('title', '').lower()
+                if title_lower in message_lower and title_lower != "welcome to ai todo!":
+                    action = "complete_task"
+                    task_id = t.get('id')
+                    updated_task = {
+                        "title": t.get('title'),
+                        "description": t.get('description', ''),
+                        "completed": True,
+                        "priority": t.get('priority', 'Medium'),
+                        "category": t.get('category', 'Personal'),
+                        "dueDate": t.get('dueDate', ''),
+                        "repeat": t.get('repeat', 'No Repeat')
+                    }
+                    break
+        
         # Detect rename/update task intent
-        if any(word in message_lower for word in ["rename", "change", "update", "edit"]) and " to " in message_lower:
+        elif any(word in message_lower for word in ["rename", "change", "update", "edit"]) and " to " in message_lower:
             parts = message_lower.split(" to ")
             if len(parts) == 2:
                 old_part = parts[0]
@@ -133,8 +151,8 @@ Be brief, friendly, and natural. Use emojis occasionally."""},
                     "repeat": "No Repeat"
                 }
         
-        # Detect delete task intent
-        elif any(word in message_lower for word in ["delete", "remove", "done with", "completed"]):
+        # Detect delete task intent (only for explicit delete/remove)
+        elif "delete" in message_lower or "remove" in message_lower:
             for t in request.tasks:
                 title_lower = t.get('title', '').lower()
                 if title_lower in message_lower and title_lower != "welcome to ai todo!":

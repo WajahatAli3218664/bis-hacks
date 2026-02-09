@@ -160,6 +160,16 @@ export default function Dashboard() {
           return updated
         })
       }
+      
+      if (data.action === 'complete_task' && data.task_id && data.updated_task) {
+        setTasks(prev => {
+          const updated = prev.map(t => 
+            t.id === data.task_id ? { ...data.updated_task, id: t.id } : t
+          )
+          localStorage.setItem('tasks', JSON.stringify(updated))
+          return updated
+        })
+      }
     } catch (error) {
       console.error('Chat error:', error)
       setChatMessages(prev => [...prev, { 
