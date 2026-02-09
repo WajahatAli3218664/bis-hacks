@@ -54,14 +54,28 @@ def chat(request: ChatRequest):
         from groq import Groq
         client = Groq(api_key=os.getenv("GROQ_API_KEY"))
         
+        # Create task context
+        task_list = "\n".join([f"- {t.get('title')}" for t in request.tasks]) if request.tasks else "No tasks yet"
+        
         completion = client.chat.completions.create(
             messages=[
-                {"role": "system", "content": "You are a helpful AI assistant for a todo app. Be concise."},
-                {"role": "user", "content": f"Tasks: {[t.get('title') for t in request.tasks]}\nMessage: {request.message}"}
+                {"role": "system", "content": f"""You are a friendly AI assistant for a todo app. Be conversational and helpful.
+
+User's current tasks:
+{task_list}
+
+When user wants to:
+- Add a task: Be encouraging and confirm
+- Delete a task: Confirm which one
+- View tasks: Summarize them nicely
+- Chat casually: Respond naturally but remind them you can help with tasks
+
+Be brief, friendly, and natural. Use emojis occasionally."""},
+                {"role": "user", "content": request.message}
             ],
             model="llama-3.3-70b-versatile",
-            temperature=0.5,
-            max_tokens=200,
+            temperature=0.7,
+            max_tokens=150,
         )
         
         response_text = completion.choices[0].message.content
@@ -70,23 +84,39 @@ def chat(request: ChatRequest):
         task = None
         task_id = None
         
-        if "add" in message_lower:
+        # Detect add task intent
+        if any(word in message_lower for word in ["add", "create", "new task", "remind me"]):
             task_title = request.message
-            for phrase in ["add task to ", "add task ", "add ", "create "]:
+            for phrase in ["add task to ", "add task ", "add ", "create ", "remind me to ", "new task "]:
                 if phrase in message_lower:
-                    task_title = request.message[message_lower.index(phrase) + len(phrase):].strip()
+                    idx = message_lower.index(phrase)
+                    task_title = request.message[idx + len(phrase):].strip()
                     break
-            if task_title:
+            
+            # Clean up task title
+            task_title = task_title.strip('"\'.!?')
+            
+            if task_title and len(task_title) > 2:
                 action = "add_task"
-                task = {"title": task_title, "description": "", "completed": False, "priority": "Medium", "category": "Personal", "dueDate": "", "repeat": "No Repeat"}
+                task = {
+                    "title": task_title,
+                    "description": "",
+                    "completed": False,
+                    "priority": "Medium",
+                    "category": "Personal",
+                    "dueDate": "",
+                    "repeat": "No Repeat"
+                }
         
-        elif "delete" in message_lower or "remove" in message_lower:
+        # Detect delete task intent
+        elif any(word in message_lower for word in ["delete", "remove", "done with", "completed"]):
             for t in request.tasks:
-                if t.get('title', '').lower() in message_lower:
+                title_lower = t.get('title', '').lower()
+                if title_lower in message_lower and title_lower != "welcome to ai todo!":
                     action = "delete_task"
                     task_id = t.get('id')
                     break
         
         return ChatResponse(response=response_text, action=action, task=task, task_id=task_id)
     except Exception as e:
-        return ChatResponse(response=f"Error: {str(e)}")
+        return ChatResponse(response=f"Oops! Something went wrong: {str(e)}")
